@@ -12,8 +12,8 @@
 
 ## Group Members
 **MANDATORY: Add the full names of all group members here:**
-- [Member 1 Full Name]
-- [Member 2 Full Name]
+- Lahav Kaiser - 207766916
+- Michal Shapira - 211468400
 
 ## Technical Details
 - Run the server with: `node index.js`
