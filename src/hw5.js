@@ -1,3 +1,6 @@
+// Lahav Kaiser - 207766916
+// Michal Shapira - 211468400
+
 import { OrbitControls } from "./OrbitControls.js";
 
 const scene = new THREE.Scene();
@@ -9,6 +12,16 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+
+renderer.setPixelRatio(window.devicePixelRatio);
+
+// Add resize listener
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 // Set background color
@@ -20,11 +33,20 @@ scene.add(ambientLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(10, 20, 15);
+directionalLight.target.position.set(0, 0, 0); // court center
 scene.add(directionalLight);
 
 // Enable shadows
 renderer.shadowMap.enabled = true;
 directionalLight.castShadow = true;
+
+directionalLight.shadow.camera.left = -40;
+directionalLight.shadow.camera.right = 40;
+directionalLight.shadow.camera.top = 40;
+directionalLight.shadow.camera.bottom = -40;
+
+directionalLight.shadow.mapSize.width = 2048;
+directionalLight.shadow.mapSize.height = 2048;
 
 function degrees_to_radians(degrees) {
   var pi = Math.PI;
@@ -125,6 +147,8 @@ function createHoop(xPosition) {
       netGeom,
       new THREE.LineBasicMaterial({ color: 0xffffff })
     );
+    net.castShadow = true;
+    net.receiveShadow = true;
     group.add(net);
   }
 
@@ -144,6 +168,8 @@ function createHoop(xPosition) {
     new THREE.MeshPhongMaterial({ color: 0x444444 })
   );
   arm.position.set(-0.5 * direction, 0, 0); // from pole to backboard
+  arm.castShadow = true;
+  arm.receiveShadow = true;
   group.add(arm);
 
   // Final position
