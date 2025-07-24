@@ -37,11 +37,14 @@ const maxPower = 100;
 const powerStep = 5;
 
 let ballVelocity = new THREE.Vector3(0, 0, 0);
-const GRAVITY = -9.8;
 let isBallInMotion = false;
 let bounceCount = 0;
 const maxBounces = 5;
 let rimCenters = [];
+let score = 0;
+let shotsAttempted = 0;
+let shotsMade = 0;
+let messageTimer = 0;
 
 renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -318,8 +321,27 @@ scoreContainer.style.left = "20px";
 scoreContainer.style.color = "white";
 scoreContainer.style.fontSize = "24px";
 scoreContainer.style.fontFamily = "Arial, sans-serif";
-scoreContainer.textContent = "Score: --";
 document.body.appendChild(scoreContainer);
+function updateScoreDisplay() {
+  const shootingPercentage =
+    shotsAttempted === 0 ? 0 : ((shotsMade / shotsAttempted) * 100).toFixed(1);
+  scoreContainer.textContent = `Score: ${score} | Attempts: ${shotsAttempted} | Made: ${shotsMade} | Accuracy: ${shootingPercentage}%`;
+}
+
+const messageElement = document.createElement("div");
+messageElement.style.position = "absolute";
+messageElement.style.top = "100px";
+messageElement.style.left = "20px";
+messageElement.style.color = "yellow";
+messageElement.style.fontSize = "28px";
+messageElement.style.fontFamily = "Arial, sans-serif";
+messageElement.style.fontWeight = "bold";
+document.body.appendChild(messageElement);
+
+function showMessage(msg) {
+  messageElement.textContent = msg;
+  messageTimer = 60;
+}
 
 // Instructions display
 const instructionsElement = document.createElement("div");
@@ -373,6 +395,8 @@ function shootBall() {
   ballVelocity.y = Math.sin(angle) * speed;
 
   isBallInMotion = true;
+  shotsAttempted++;
+  updateScoreDisplay();
 }
 
 // Handle key events
@@ -409,6 +433,28 @@ document.addEventListener("keyup", handleKeyUp);
 
 function moveBasketball() {
   if (isBallInMotion) {
+    // Score detection (downward motion + center pass)
+    if (ballVelocity.y < 0) {
+      for (const rim of rimCenters) {
+        const dx = basketball.position.x - rim.rimX;
+        const dz = basketball.position.z - rim.rimZ;
+        const horizontalDist = Math.sqrt(dx * dx + dz * dz);
+
+        if (horizontalDist < rim.rimRadius * 0.8) {
+          shotsMade++;
+          score += 2;
+          updateScoreDisplay();
+          showMessage("SHOT MADE!");
+          isBallInMotion = false;
+          ballVelocity.set(0, 0, 0);
+          bounceCount = 0;
+          break;
+        } else {
+          showMessage("MISSED SHOT");
+        }
+      }
+    }
+
     // Apply gravity per frame (for 60 FPS)
     ballVelocity.y += -0.25;
 
@@ -485,6 +531,13 @@ function animate() {
   setTimeout(function () {
     requestAnimationFrame(animate);
   }, 1000 / 40);
+
+  if (messageTimer > 0) {
+    messageTimer--;
+    if (messageTimer === 0) {
+      messageElement.textContent = "";
+    }
+  }
   // Update controls
   controls.enabled = isOrbitEnabled;
   controls.update();
