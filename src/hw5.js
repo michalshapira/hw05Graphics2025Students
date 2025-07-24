@@ -415,6 +415,10 @@ function moveBasketball() {
     // Move ball by velocity
     basketball.position.add(ballVelocity);
 
+    // update rotation by speed and velocity
+    basketball.rotation.x += ballVelocity.z * 0.1;
+    basketball.rotation.z -= ballVelocity.x * 0.1;
+
     // check for rim collision
     for (const rim of rimCenters) {
       const dx = basketball.position.x - rim.rimX;
@@ -480,7 +484,7 @@ function moveBasketball() {
 function animate() {
   setTimeout(function () {
     requestAnimationFrame(animate);
-  }, 1000 / 70);
+  }, 1000 / 40);
   // Update controls
   controls.enabled = isOrbitEnabled;
   controls.update();
