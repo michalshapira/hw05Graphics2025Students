@@ -41,6 +41,7 @@ const GRAVITY = -9.8;
 let isBallInMotion = false;
 let bounceCount = 0;
 const maxBounces = 5;
+let rimCenters = [];
 
 renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -163,6 +164,13 @@ function createHoop(xPosition) {
   rim.castShadow = true;
   rim.receiveShadow = true;
   group.add(rim);
+
+  rimCenters.push({
+    rimX: rimOffset + xPosition,
+    rimY: rimHeight,
+    rimZ: 0,
+    rimRadius,
+  });
 
   // Net (attached to rim)
   for (let i = 0; i < 8; i++) {
@@ -407,6 +415,25 @@ function moveBasketball() {
     // Move ball by velocity
     basketball.position.add(ballVelocity);
 
+    // check for rim collision
+    for (const rim of rimCenters) {
+      const dx = basketball.position.x - rim.rimX;
+      const dy = basketball.position.y - rim.rimY;
+      const dz = basketball.position.z - rim.rimZ;
+      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const minDistance = 0.24 + rim.rimRadius;
+
+      if (distance < minDistance) {
+        const normal = new THREE.Vector3(dx, dy, dz).normalize();
+        const velocityDot = ballVelocity.dot(normal);
+        const reflection = normal.multiplyScalar(2 * velocityDot);
+        ballVelocity.sub(reflection).multiplyScalar(0.7); // deflect & dampen
+
+        break; // one collision per frame
+      }
+    }
+
+    // handle bounce
     const groundY = 0.24 + 0.1;
 
     if (basketball.position.y < 1 && ballVelocity.y < 0) {
