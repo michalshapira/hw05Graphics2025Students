@@ -407,11 +407,22 @@ function moveBasketball() {
     // Move ball by velocity
     basketball.position.add(ballVelocity);
 
-    // Ground collision
-    if (basketball.position.y <= 0.24 + 0.1) {
-      basketball.position.y = 0.24 + 0.1;
-      isBallInMotion = false;
-      ballVelocity.set(0, 0, 0);
+    const groundY = 0.24 + 0.1;
+
+    if (basketball.position.y < 1 && ballVelocity.y < 0) {
+      basketball.position.y = groundY;
+
+      // Add bounce with energy loss
+      if (bounceCount < maxBounces) {
+        ballVelocity.y *= -0.7; // reverse and reduce vertical speed
+        ballVelocity.x *= 0.9; // optional: reduce horizontal drift
+        ballVelocity.z *= 0.9;
+        bounceCount++;
+      } else {
+        isBallInMotion = false;
+        ballVelocity.set(0, 0, 0);
+        bounceCount = 0;
+      }
     }
   } else {
     // Only allow movement if ball is NOT in motion
@@ -440,8 +451,9 @@ function moveBasketball() {
 
 // Animation function
 function animate() {
-  requestAnimationFrame(animate);
-
+  setTimeout(function () {
+    requestAnimationFrame(animate);
+  }, 1000 / 70);
   // Update controls
   controls.enabled = isOrbitEnabled;
   controls.update();
