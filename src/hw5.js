@@ -12,6 +12,35 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+let basketball;
+
+const keyStates = {
+  ArrowLeft: false,
+  ArrowRight: false,
+  ArrowUp: false,
+  ArrowDown: false,
+  w: false,
+  s: false,
+};
+
+const moveSpeed = 0.15;
+const courtBounds = {
+  xMin: -14.5,
+  xMax: 14.5,
+  zMin: -7,
+  zMax: 7,
+};
+
+let shotPower = 50;
+const minPower = 0;
+const maxPower = 100;
+const powerStep = 5;
+
+let ballVelocity = new THREE.Vector3(0, 0, 0);
+const GRAVITY = -9.8;
+let isBallInMotion = false;
+let bounceCount = 0;
+const maxBounces = 5;
 
 renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -99,8 +128,9 @@ function createCourtLines() {
 }
 
 // task 2
+const rimHeight = 3.05;
+
 function createHoop(xPosition) {
-  const rimHeight = 3.05;
   const isRight = xPosition > 0;
   const direction = isRight ? -1 : 1;
 
@@ -185,10 +215,10 @@ function createBasketball() {
   // Basketball mesh
   const ballGeometry = new THREE.SphereGeometry(ballRadius, 64, 64);
   const ballMaterial = new THREE.MeshPhongMaterial({ color: 0xff8c00 });
-  const ball = new THREE.Mesh(ballGeometry, ballMaterial);
-  ball.position.set(0, ballRadius + 0.1, 0);
-  ball.castShadow = true;
-  ball.receiveShadow = true;
+  basketball = new THREE.Mesh(ballGeometry, ballMaterial);
+  basketball.position.set(0, ballRadius + 0.1, 0);
+  basketball.castShadow = true;
+  basketball.receiveShadow = true;
 
   // Horizontal seam (equator)
   const equatorPoints = [];
@@ -205,7 +235,7 @@ function createBasketball() {
     equatorGeometry,
     new THREE.LineBasicMaterial({ color: 0x000000 })
   );
-  ball.add(equatorLine);
+  basketball.add(equatorLine);
 
   // 8 vertical seams
   for (let i = 0; i < 8; i++) {
@@ -227,11 +257,11 @@ function createBasketball() {
       verticalGeom,
       new THREE.LineBasicMaterial({ color: 0x000000 })
     );
-    ball.add(verticalLine);
+    basketball.add(verticalLine);
   }
 
   // Add to scene
-  scene.add(ball);
+  scene.add(basketball);
 }
 
 // Create basketball court
@@ -255,9 +285,10 @@ function createBasketballCourt() {
 // Create all elements
 createBasketballCourt(); //task 1
 
+const hoopXPos = 13;
 // task 2
-createHoop(-13); // left hoop
-createHoop(13); // right hoop
+createHoop(-hoopXPos); // left hoop
+createHoop(hoopXPos); // right hoop
 
 createBasketball(); //task 3
 
@@ -294,17 +325,118 @@ instructionsElement.style.textAlign = "left";
 instructionsElement.innerHTML = `
   <h3>Controls:</h3>
   <p>O - Toggle orbit camera</p>
+  <p>Arrow Keys - Move ball</p>
+  <p>W/S - Increase/Decrease shot power</p>
 `;
 document.body.appendChild(instructionsElement);
+
+const powerDisplay = document.createElement("div");
+powerDisplay.id = "power-display";
+powerDisplay.style.position = "absolute";
+powerDisplay.style.top = "60px";
+powerDisplay.style.left = "20px";
+powerDisplay.style.color = "white";
+powerDisplay.style.fontSize = "20px";
+powerDisplay.style.fontFamily = "Arial, sans-serif";
+powerDisplay.textContent = `Shot Power: ${shotPower}%`;
+document.body.appendChild(powerDisplay);
+
+function updatePowerDisplay() {
+  powerDisplay.textContent = `Shot Power: ${shotPower}%`;
+}
+
+function shootBall() {
+  const targetX = basketball.position.x < 0 ? -hoopXPos : hoopXPos; // bonus - multiple hoops
+  const targetY = rimHeight;
+  const targetZ = 0;
+
+  const origin = basketball.position.clone();
+  const target = new THREE.Vector3(targetX, targetY, targetZ);
+
+  const direction = new THREE.Vector3().subVectors(target, origin);
+  const horizontalDistance = Math.sqrt(direction.x ** 2 + direction.z ** 2);
+  const angle = THREE.MathUtils.degToRad(50);
+
+  const speed = 0.7 + (shotPower / 100) * 1.8;
+
+  // Set initial velocity
+  ballVelocity.x = (direction.x / horizontalDistance) * Math.cos(angle) * speed;
+  ballVelocity.z = (direction.z / horizontalDistance) * Math.cos(angle) * speed;
+  ballVelocity.y = Math.sin(angle) * speed;
+
+  isBallInMotion = true;
+}
 
 // Handle key events
 function handleKeyDown(e) {
   if (e.key === "o") {
     isOrbitEnabled = !isOrbitEnabled;
   }
+
+  if (e.key in keyStates) {
+    keyStates[e.key] = true;
+  }
+
+  if (e.key === "w") {
+    shotPower = Math.min(maxPower, shotPower + powerStep);
+    updatePowerDisplay();
+  } else if (e.key === "s") {
+    shotPower = Math.max(minPower, shotPower - powerStep);
+    updatePowerDisplay();
+  }
+
+  if (e.key === " ") {
+    shootBall();
+  }
+}
+
+function handleKeyUp(e) {
+  if (e.key in keyStates) {
+    keyStates[e.key] = false;
+  }
 }
 
 document.addEventListener("keydown", handleKeyDown);
+document.addEventListener("keyup", handleKeyUp);
+
+function moveBasketball() {
+  if (isBallInMotion) {
+    // Apply gravity per frame (for 60 FPS)
+    ballVelocity.y += -0.25;
+
+    // Move ball by velocity
+    basketball.position.add(ballVelocity);
+
+    // Ground collision
+    if (basketball.position.y <= 0.24 + 0.1) {
+      basketball.position.y = 0.24 + 0.1;
+      isBallInMotion = false;
+      ballVelocity.set(0, 0, 0);
+    }
+  } else {
+    // Only allow movement if ball is NOT in motion
+    if (basketball) {
+      const delta = new THREE.Vector3();
+
+      if (keyStates.ArrowLeft) delta.x -= moveSpeed;
+      if (keyStates.ArrowRight) delta.x += moveSpeed;
+      if (keyStates.ArrowUp) delta.z -= moveSpeed;
+      if (keyStates.ArrowDown) delta.z += moveSpeed;
+
+      basketball.position.add(delta);
+
+      // within court bounds
+      basketball.position.x = Math.max(
+        courtBounds.xMin,
+        Math.min(courtBounds.xMax, basketball.position.x)
+      );
+      basketball.position.z = Math.max(
+        courtBounds.zMin,
+        Math.min(courtBounds.zMax, basketball.position.z)
+      );
+    }
+  }
+}
 
 // Animation function
 function animate() {
@@ -314,6 +446,7 @@ function animate() {
   controls.enabled = isOrbitEnabled;
   controls.update();
 
+  moveBasketball();
   renderer.render(scene, camera);
 }
 
