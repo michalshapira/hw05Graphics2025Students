@@ -45,6 +45,8 @@ let score = 0;
 let shotsAttempted = 0;
 let shotsMade = 0;
 let messageTimer = 0;
+let wasShotMade = false;
+let messageShown = false;
 
 renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -440,17 +442,13 @@ function moveBasketball() {
         const dz = basketball.position.z - rim.rimZ;
         const horizontalDist = Math.sqrt(dx * dx + dz * dz);
 
-        if (horizontalDist < rim.rimRadius * 0.8) {
+        if (!wasShotMade && horizontalDist < rim.rimRadius * 0.8) {
+          wasShotMade = true;
           shotsMade++;
           score += 2;
           updateScoreDisplay();
-          showMessage("SHOT MADE!");
-          isBallInMotion = false;
-          ballVelocity.set(0, 0, 0);
           bounceCount = 0;
           break;
-        } else {
-          showMessage("MISSED SHOT");
         }
       }
     }
@@ -491,8 +489,8 @@ function moveBasketball() {
 
       // Add bounce with energy loss
       if (bounceCount < maxBounces) {
-        ballVelocity.y *= -0.7; // reverse and reduce vertical speed
-        ballVelocity.x *= 0.9; // optional: reduce horizontal drift
+        ballVelocity.y *= -0.7;
+        ballVelocity.x *= 0.9;
         ballVelocity.z *= 0.9;
         bounceCount++;
       } else {
@@ -500,6 +498,17 @@ function moveBasketball() {
         ballVelocity.set(0, 0, 0);
         bounceCount = 0;
       }
+
+      if (!messageShown) {
+        if (wasShotMade) {
+          showMessage("SHOT MADE!");
+        } else {
+          showMessage("MISSED SHOT");
+        }
+        messageShown = true;
+      }
+
+      wasShotMade = false; // Reset for next shot
     }
   } else {
     // Only allow movement if ball is NOT in motion
@@ -535,6 +544,7 @@ function animate() {
   if (messageTimer > 0) {
     messageTimer--;
     if (messageTimer === 0) {
+      messageShown = false;
       messageElement.textContent = "";
     }
   }
